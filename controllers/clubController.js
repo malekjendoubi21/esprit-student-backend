@@ -125,6 +125,8 @@ exports.getPublicClubById = async (req, res) => {
     try {
         const { id } = req.params;
 
+        console.log(`[getPublicClubById] Requested club ID: ${id}`);
+
         const club = await Club.findOne({ 
             _id: id, 
             statut: 'actif', 
@@ -134,11 +136,14 @@ exports.getPublicClubById = async (req, res) => {
         .populate('president', 'nom prenom');
 
         if (!club) {
+            console.log(`[getPublicClubById] Club not found or not active/valid: ${id}`);
             return res.status(404).json({
                 success: false,
                 message: 'Club non trouvé'
             });
         }
+
+        console.log(`[getPublicClubById] Club found: ${club.nom}`);
 
         res.json({
             success: true,
@@ -150,6 +155,134 @@ exports.getPublicClubById = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Erreur lors de la récupération du club'
+        });
+    }
+};
+
+// Nouvelle fonction pour vérifier le statut d'un club (pour le debugging)
+exports.getClubStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        console.log(`[getClubStatus] Checking club ID: ${id}`);
+        
+        const club = await Club.findById(id)
+            .select('nom statut valide');
+            
+        if (!club) {
+            return res.status(404).json({
+                success: false,
+                message: 'Club non trouvé'
+            });
+        }
+        
+        // Vérifier si le club est accessible via getPublicClubById
+        const isAccessible = club.statut === 'actif' && club.valide === true;
+        
+        res.json({
+            success: true,
+            data: {
+                club: {
+                    id: club._id,
+                    nom: club.nom,
+                    statut: club.statut,
+                    valide: club.valide
+                },
+                isAccessiblePublicly: isAccessible,
+                message: isAccessible ? 
+                    'Ce club est accessible publiquement' : 
+                    `Ce club n'est pas accessible publiquement car ${club.statut !== 'actif' ? 'son statut n\'est pas actif' : 'il n\'est pas validé'}`
+            }
+        });
+    } catch (err) {
+        console.error('Erreur getClubStatus:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la vérification du statut du club'
+        });
+    }
+};
+
+// Fonction pour activer/désactiver un club (admin seulement)
+exports.updateClubStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { statut, valide } = req.body;
+        
+        // Vérifier les valeurs
+        if (statut && !['actif', 'inactif', 'suspendu', 'en_attente'].includes(statut)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Statut invalide'
+            });
+        }
+        
+        if (valide !== undefined && typeof valide !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: 'La valeur de validation doit être un booléen'
+            });
+        }
+        
+        // Trouver et mettre à jour le club
+        const club = await Club.findById(id);
+        if (!club) {
+            return res.status(404).json({
+                success: false,
+                message: 'Club non trouvé'
+            });
+        }
+        
+        // Mettre à jour les champs
+        if (statut) club.statut = statut;
+        if (valide !== undefined) club.valide = valide;
+        
+        await club.save();
+        
+        // Notifier le club par email du changement de statut
+        try {
+            if (club.email) {
+                let sujet = '';
+                let message = '';
+                
+                if (valide === true && club.statut === 'actif') {
+                    sujet = 'Votre club a été validé et activé';
+                    message = `Félicitations ! Votre club "${club.nom}" a été validé et est maintenant actif sur la plateforme.`;
+                } else if (valide === true) {
+                    sujet = 'Votre club a été validé';
+                    message = `Votre club "${club.nom}" a été validé. ${club.statut !== 'actif' ? `Cependant, son statut est actuellement "${club.statut}".` : ''}`;
+                } else if (club.statut === 'actif') {
+                    sujet = 'Changement de statut de votre club';
+                    message = `Le statut de votre club "${club.nom}" a été changé à "actif".`;
+                } else if (club.statut === 'suspendu') {
+                    sujet = 'Suspension de votre club';
+                    message = `Votre club "${club.nom}" a été suspendu. Veuillez contacter l'administration pour plus d'informations.`;
+                }
+                
+                if (sujet) {
+                    await sendMail(club.email, sujet, message);
+                }
+            }
+        } catch (emailErr) {
+            console.error('Erreur envoi email:', emailErr);
+        }
+        
+        res.json({
+            success: true,
+            message: 'Statut du club mis à jour avec succès',
+            data: {
+                id: club._id,
+                nom: club.nom,
+                statut: club.statut,
+                valide: club.valide
+            }
+        });
+        
+    } catch (err) {
+        console.error('Erreur updateClubStatus:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la mise à jour du statut du club'
         });
     }
 };

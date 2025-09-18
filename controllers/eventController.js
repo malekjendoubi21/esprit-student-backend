@@ -23,6 +23,9 @@ exports.getEvents = async (req, res) => {
         if (typeEvent) filter.typeEvent = typeEvent;
         if (clubId) filter.clubId = clubId;
         
+        // Debug log to trace the filter being applied
+        console.log('Admin/Club events filter:', filter);
+        
         // Filtre de recherche textuelle
         if (search) {
             filter.$or = [
@@ -59,6 +62,8 @@ exports.getEvents = async (req, res) => {
             .limit(parseInt(limit));
 
         const total = await Event.countDocuments(filter);
+        
+        console.log(`Found ${events.length} events for admin/club view`);
 
         res.json({
             success: true,
@@ -94,16 +99,21 @@ exports.getPublicEvents = async (req, res) => {
 
         // Construire le filtre - seulement les événements validés
         const filter = {
-            valide: true
+            statut: 'valide'  // Changed from valide: true to match the schema
         };
+
+        // Debug log to trace the filter being applied
+        console.log('Public events filter:', filter, 'Type:', type);
 
         // Filtre par type (upcoming/past)
         const now = new Date();
         if (type === 'upcoming') {
             filter.dateDebut = { $gte: now };
         } else if (type === 'past') {
-            filter.dateFin = { $lt: now };
+            filter.dateDebut = { $lt: now }; // Changed from dateFin to dateDebut for consistency
         }
+        
+        console.log('Date filter applied:', type, filter.dateDebut);
         
         // Filtre de recherche textuelle
         if (search) {
@@ -127,6 +137,8 @@ exports.getPublicEvents = async (req, res) => {
             .limit(parseInt(limit));
 
         const total = await Event.countDocuments(filter);
+        
+        console.log(`Found ${events.length} public events for type ${type}`);
 
         res.json({
             success: true,
@@ -558,7 +570,7 @@ exports.getEventsByClub = async (req, res) => {
         const {
             limit = 5,
             type = 'upcoming',
-            statut = 'validé'
+            statut = 'valide'  // Fixed: should match the enum in Event model
         } = req.query;
 
         // Vérifier que le club existe

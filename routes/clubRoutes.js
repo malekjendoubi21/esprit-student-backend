@@ -6,6 +6,7 @@ const { auth, ensureOwnClub } = require('../middlewares/auth');
 // Routes publiques (sans authentification)
 router.get('/public', clubController.getPublicClubs);
 router.get('/:id/public', clubController.getPublicClubById);
+router.get('/:id/status', clubController.getClubStatus); // New debugging route
 
 // Routes protégées (avec authentification admin)
 router.get('/', auth(['admin']), clubController.getClubs);
@@ -21,6 +22,7 @@ router.post('/my/change-password', auth(['club']), clubController.changePassword
 
 // Routes admin pour la gestion des clubs
 router.put('/:id/profile', auth(['admin']), clubController.updateProfile);
+router.put('/:id/status', auth(['admin']), clubController.updateClubStatus);
 router.delete('/:id', auth(['admin']), clubController.deleteClub);
 
 module.exports = router;
