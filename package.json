@@ -1,0 +1,32 @@
+{
+  "name": "backoffice",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "init-data": "node scripts/initData.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "admin:create": "node scripts/adminCLI.js create",
+    "admin:create-multiple": "node scripts/adminCLI.js create-multiple", 
+    "admin:list": "node scripts/adminCLI.js list",
+    "admin:reset": "node scripts/adminCLI.js reset",
+    "admin:help": "node scripts/adminCLI.js help"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.1",
+    "nodemailer": "^7.0.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
